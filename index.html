@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGuardian - Pemeriksa Keamanan URL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            width: 80%;
+            max-width: 800px;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        #urlForm {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #url {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #submit {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        #submit:hover {
+            background: #2980b9;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .aman {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .tidakAman {
+            color: #c0392b;
+            font-weight: bold;
+        }
+        .loading {
+            text-align: center;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+        .error {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebGuardian - Pemeriksa Keamanan URL</h1>
+        <form id="urlForm">
+            <input type="text" id="url" placeholder="Masukkan URL website (contoh: https://www.example.com)" required>
+            <button type="submit" id="submit">Periksa Keamanan</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('urlForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('url').value;
+            if (isValidUrl(url)) {
+                periksaKeamanan(url);
+            } else {
+                document.getElementById('result').innerHTML = '<p class="error">URL tidak valid. Pastikan Anda memasukkan URL yang benar, termasuk http:// atau https://</p>';
+            }
+        });
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function periksaKeamanan(url) {
+            document.getElementById('result').innerHTML = '<p class="loading">Memeriksa keamanan website...</p>';
+
+            // Ganti dengan kunci API VirusTotal Anda
+            const kunciAPI = 'KUNCI_API_VIRUSTOTAL_ANDA';
+            
+            // Menggunakan layanan proxy untuk mengatasi masalah CORS
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+            const urlAPI = `${proxyUrl}https://www.virustotal.com/vtapi/v2/url/report?apikey=${kunciAPI}&resource=${encodeURIComponent(url)}`;
+
+            fetch(urlAPI)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Respons jaringan tidak OK');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    let hasilHtml = '';
+                    if (data.response_code === 1) {
+                        if (data.positives > 0) {
+                            hasilHtml = `<p class="tidakAman">Peringatan: Website ini mungkin tidak aman. ${data.positives} dari ${data.total} vendor keamanan menandainya sebagai berbahaya.</p>`;
+                        } else {
+                            hasilHtml = `<p class="aman">Website ini tampaknya aman. Tidak ada vendor keamanan yang menandainya sebagai berbahaya.</p>`;
+                        }
+                        hasilHtml += `
+                            <p>URL yang diperiksa: ${data.url}</p>
+                            <p>Tanggal pemindaian: ${new Date(data.scan_date).toLocaleString()}</p>
+                            <p>Total vendor keamanan: ${data.total}</p>
+                            <p>Vendor yang mendeteksi ancaman: ${data.positives}</p>
+                        `;
+                        if (data.positives > 0) {
+                            hasilHtml += '<h3>Detail Ancaman:</h3><ul>';
+                            for (let vendor in data.scans) {
+                                if (data.scans[vendor].detected) {
+                                    hasilHtml += `<li>${vendor}: ${data.scans[vendor].result}</li>`;
+                                }
+                            }
+                            hasilHtml += '</ul>';
+                        }
+                    } else {
+                        hasilHtml = `<p class="error">Tidak dapat memeriksa keamanan website ini. Silakan coba lagi nanti.</p>`;
+                    }
+                    document.getElementById('result').innerHTML = hasilHtml;
+                })
+                .catch(error => {
+                    console.error('Kesalahan:', error);
+                    document.getElementById('result').innerHTML = '<p class="error">Terjadi kesalahan saat memeriksa website. Silakan coba lagi atau periksa konsol untuk detail.</p>';
+                });
+        }
+    </script>
+</body>
+</html>
